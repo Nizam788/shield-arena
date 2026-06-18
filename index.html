@@ -285,6 +285,20 @@ button:disabled{opacity:.5;cursor:not-allowed;transform:none}
   .leader{grid-template-columns:48px 1fr}.leader .score,.leader .time{grid-column:2}
   .word-grid{grid-template-columns:repeat(10,28px);gap:4px}.letter{width:28px;height:28px;font-size:.82rem}
 }
+
+.firebase-status{
+  display:inline-block;
+  margin-top:10px;
+  padding:8px 12px;
+  border-radius:999px;
+  border:1px solid rgba(34,211,238,.30);
+  background:rgba(34,211,238,.08);
+  color:#dffaff;
+  font-weight:900;
+  font-size:.86rem;
+}
+.firebase-status.offline{border-color:rgba(251,113,133,.45);background:rgba(251,113,133,.12);color:#ffe4e6}
+
 </style>
 </head>
 <body>
@@ -299,6 +313,7 @@ button:disabled{opacity:.5;cursor:not-allowed;transform:none}
     <div class="logo">🛡️</div>
     <h1><span class="title-fill">Shield Arena</span></h1>
     <p>Mini game edukasi Interactive Shield. Pilih mode, kalahkan waktu, kumpulkan XP, dan masuk Hall of Fame.</p>
+    <div class="firebase-status" id="onlineStatus">Leaderboard Online: menghubungkan...</div>
     <div class="arcade-input">
       <input id="playerName" placeholder="Masukkan nama player..." maxlength="24">
       <button onclick="savePlayer()">Start Player</button>
@@ -353,7 +368,46 @@ button:disabled{opacity:.5;cursor:not-allowed;transform:none}
   </section>
 </main></div>
 
+<script src="https://www.gstatic.com/firebasejs/12.5.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.5.0/firebase-database-compat.js"></script>
 <script>
+
+// ===== FIREBASE REALTIME LEADERBOARD =====
+const firebaseConfig = {
+  apiKey: "AIzaSyDHtTnj30xM1QmXMZtZSHsDyTQxTvf0_bE",
+  authDomain: "shield-arena-web.firebaseapp.com",
+  databaseURL: "https://shield-arena-web-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "shield-arena-web",
+  storageBucket: "shield-arena-web.firebasestorage.app",
+  messagingSenderId: "683331804194",
+  appId: "1:683331804194:web:53fe112eae9fef4e31be7b",
+  measurementId: "G-94DHPLQ00X"
+};
+
+let db = null;
+let firebaseReady = false;
+try{
+  firebase.initializeApp(firebaseConfig);
+  db = firebase.database();
+  firebaseReady = true;
+  setTimeout(()=>{
+    const status = document.getElementById("onlineStatus");
+    if(status){
+      status.textContent = "Leaderboard Online: aktif";
+      status.classList.remove("offline");
+    }
+  },300);
+}catch(err){
+  console.error("Firebase gagal aktif:", err);
+  setTimeout(()=>{
+    const status = document.getElementById("onlineStatus");
+    if(status){
+      status.textContent = "Leaderboard Online: gagal, pakai mode lokal";
+      status.classList.add("offline");
+    }
+  },300);
+}
+
 const $=id=>document.getElementById(id);
 const screens=["home","game","result","leaderboardSection"];
 let player="",currentMode="",pool=[],current=0,score=0,correct=0,startTime=0,timeLeft=0,timer=null,answered=false,selectedTile=null,selectedLeft=null,selectedLetters=[],openCards=[];
@@ -422,10 +476,95 @@ function feed(m){$("feedback").innerHTML=m;$("feedback").classList.add("show")}
 function nextStep(){current++;if(current>=pool.length)finish();else render()}
 function finish(){clearInterval(timer);let time=Math.floor((Date.now()-startTime)/1000);score+=correct*90+Math.max(0,180-time);save({name:player,mode:currentMode,score,correct,time,date:new Date().toLocaleString("id-ID")});$("resultName").textContent=player;$("finalScore").textContent=score;$("finalCorrect").textContent=correct;$("finalTime").textContent=time+"s";$("rankTitle").textContent=rank(score);show("result")}
 function rank(s){if(s>3400)return"Guardian";if(s>2400)return"Shield Master";if(s>1500)return"Active";return"Rookie"}
-function scores(){try{return JSON.parse(localStorage.getItem("shieldArenaBoard"))||[]}catch(e){return[]}}
-function save(x){let d=scores();d.push(x);localStorage.setItem("shieldArenaBoard",JSON.stringify(d.slice(-250)))}
-function showLeaderboard(mode){let d=scores(),map={};$("leaderTitle").textContent=mode==="total"?"Hall of Fame":"Rank "+mode.toUpperCase();if(mode==="total"){d.forEach(x=>{map[x.name]=map[x.name]||{name:x.name,score:0,correct:0,time:0,date:x.date};map[x.name].score+=x.score;map[x.name].correct+=x.correct;map[x.name].time+=x.time;map[x.name].date=x.date});d=Object.values(map)}else d=d.filter(x=>x.mode===mode);d.sort((a,b)=>b.score-a.score||b.correct-a.correct||a.time-b.time);let box=$("leaderboard");box.innerHTML=d.length?"":"<p>Belum ada skor.</p>";d.slice(0,20).forEach((x,i)=>{let div=document.createElement("div");div.className="leader"+(i===0?" top1":"");let medal=i===0?"🥇":i===1?"🥈":i===2?"🥉":"#"+(i+1);div.innerHTML=`<div class="pos">${medal}</div><div><div class="name">${esc(x.name)}</div><small>${x.correct} sukses • ${x.date||""}</small></div><div class="score"><b>${x.score}</b><br><small>XP</small></div><div class="time"><b>${x.time}s</b><br><small>Time</small></div>`;box.appendChild(div)});show("leaderboardSection")}
-function resetLeaderboard(){if(prompt("Ketik RESET untuk reset Hall of Fame:")==="RESET"){localStorage.removeItem("shieldArenaBoard");showLeaderboard("total")}}
+function scores(){
+  try{return JSON.parse(localStorage.getItem("shieldArenaBoard"))||[]}catch(e){return[]}
+}
+function localSave(x){
+  let d=scores();
+  d.push(x);
+  localStorage.setItem("shieldArenaBoard",JSON.stringify(d.slice(-250)));
+}
+function save(x){
+  // Simpan lokal sebagai cadangan, lalu kirim ke Firebase agar semua HP/laptop melihat rank yang sama.
+  localSave(x);
+  if(!firebaseReady || !db){
+    console.warn("Firebase belum aktif, skor hanya tersimpan lokal.");
+    return;
+  }
+  const clean = {
+    name: String(x.name || "Player").slice(0,24),
+    mode: String(x.mode || "unknown"),
+    score: Number(x.score || 0),
+    correct: Number(x.correct || 0),
+    time: Number(x.time || 0),
+    rank: rank(Number(x.score || 0)),
+    date: x.date || new Date().toLocaleString("id-ID"),
+    createdAt: firebase.database.ServerValue.TIMESTAMP
+  };
+  db.ref("leaderboard").push(clean)
+    .then(()=>toast("XP masuk leaderboard online."))
+    .catch(err=>{
+      console.error("Gagal menyimpan ke Firebase:",err);
+      toast("Gagal simpan online. Skor tersimpan lokal.");
+    });
+}
+function renderLeaderboard(mode, rawData){
+  let d = rawData || [];
+  let map = {};
+  $("leaderTitle").textContent = mode === "total" ? "Hall of Fame Online" : "Rank " + mode.toUpperCase();
+  if(mode === "total"){
+    d.forEach(x=>{
+      const key = (x.name || "Player").toLowerCase().trim();
+      map[key] = map[key] || {name:x.name || "Player",score:0,correct:0,time:0,date:x.date || ""};
+      map[key].score += Number(x.score || 0);
+      map[key].correct += Number(x.correct || 0);
+      map[key].time += Number(x.time || 0);
+      map[key].date = x.date || map[key].date;
+    });
+    d = Object.values(map);
+  }else{
+    d = d.filter(x => x.mode === mode);
+  }
+  d.sort((a,b)=>Number(b.score||0)-Number(a.score||0) || Number(b.correct||0)-Number(a.correct||0) || Number(a.time||0)-Number(b.time||0));
+  let box = $("leaderboard");
+  box.innerHTML = d.length ? "" : "<p>Belum ada skor online. Main dulu, wahai calon penghuni papan peringkat.</p>";
+  d.slice(0,20).forEach((x,i)=>{
+    let div=document.createElement("div");
+    div.className="leader"+(i===0?" top1":"");
+    let medal=i===0?"🥇":i===1?"🥈":i===2?"🥉":"#"+(i+1);
+    div.innerHTML=`<div class="pos">${medal}</div><div><div class="name">${esc(x.name || "Player")}</div><small>${Number(x.correct||0)} sukses • ${esc(x.date||"")}</small></div><div class="score"><b>${Number(x.score||0)}</b><br><small>XP</small></div><div class="time"><b>${Number(x.time||0)}s</b><br><small>Time</small></div>`;
+    box.appendChild(div);
+  });
+}
+function showLeaderboard(mode){
+  show("leaderboardSection");
+  $("leaderTitle").textContent = "Memuat leaderboard...";
+  $("leaderboard").innerHTML = "<p>Mengambil ranking online dari Firebase...</p>";
+  if(firebaseReady && db){
+    db.ref("leaderboard").limitToLast(250).on("value", snap=>{
+      const val = snap.val() || {};
+      const d = Object.values(val);
+      renderLeaderboard(mode,d);
+    }, err=>{
+      console.error(err);
+      renderLeaderboard(mode,scores());
+      toast("Gagal membaca online. Menampilkan data lokal.");
+    });
+  }else{
+    renderLeaderboard(mode,scores());
+  }
+}
+function resetLeaderboard(){
+  if(prompt("Ketik RESET untuk reset Hall of Fame:")!=="RESET") return;
+  localStorage.removeItem("shieldArenaBoard");
+  if(firebaseReady && db){
+    db.ref("leaderboard").remove()
+      .then(()=>{toast("Leaderboard online direset.");showLeaderboard("total")})
+      .catch(err=>{console.error(err);toast("Gagal reset online.");showLeaderboard("total")});
+  }else{
+    showLeaderboard("total");
+  }
+}
 function esc(s){return String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]))}
 </script>
 </body>
