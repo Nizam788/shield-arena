@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Shield Arena | Interactive Shield Game</title>
+<style>
+:root{
+  --bg:#050816;
+  --bg2:#080f28;
+  --panel:#0d1736;
+  --panel2:#111f46;
+  --cyan:#22d3ee;
+  --blue:#38bdf8;
+  --purple:#8b5cf6;
+  --pink:#f472b6;
+  --green:#34d399;
+  --yellow:#facc15;
+  --red:#fb7185;
+  --white:#f8fafc;
+  --muted:#cbd5e1;
+  --line:rgba(34,211,238,.28);
+}
+*{box-sizing:border-box;margin:0;padding:0;font-family:"Segoe UI",Arial,sans-serif}
+body{
+  min-height:100vh;
+  overflow:hidden;
+  background:radial-gradient(circle at 50% 10%,#12245a 0%,#050816 46%,#02040c 100%);
+  color:var(--white);
+}
+body::before{
+  content:"";
+  position:fixed;inset:0;z-index:-5;
+  background:
+    linear-gradient(rgba(34,211,238,.08) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(34,211,238,.08) 1px,transparent 1px);
+  background-size:48px 48px;
+  transform:perspective(900px) rotateX(64deg) translateY(240px);
+  transform-origin:center bottom;
+  animation:gridRun 6s linear infinite;
+}
+body::after{
+  content:"";
+  position:fixed;inset:0;z-index:-4;pointer-events:none;
+  background:
+    radial-gradient(circle at 18% 25%,rgba(34,211,238,.26),transparent 22%),
+    radial-gradient(circle at 82% 70%,rgba(139,92,246,.22),transparent 26%),
+    linear-gradient(120deg,transparent,rgba(255,255,255,.035),transparent);
+  animation:bgShift 10s ease-in-out infinite alternate;
+}
+.scan{
+  position:fixed;inset:0;pointer-events:none;z-index:50;
+  background:linear-gradient(rgba(255,255,255,.03) 50%,rgba(0,0,0,.03) 50%);
+  background-size:100% 5px;
+  mix-blend-mode:overlay;
+  opacity:.25;
+}
+.light{
+  position:fixed;width:480px;height:480px;border-radius:50%;filter:blur(100px);opacity:.18;z-index:-3;
+  background:var(--cyan);left:-120px;top:-120px;animation:blob 11s ease-in-out infinite alternate;
+}
+.light.two{left:auto;right:-140px;top:auto;bottom:-160px;background:var(--purple);animation-delay:2s}
+.app{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:18px}
+.machine{
+  width:min(1180px,100%);
+  max-height:94vh;
+  overflow-y:auto;
+  scrollbar-width:none;
+  border:2px solid rgba(34,211,238,.45);
+  border-radius:28px;
+  background:linear-gradient(145deg,rgba(8,15,40,.94),rgba(13,23,54,.92));
+  box-shadow:0 0 36px rgba(34,211,238,.24),0 0 80px rgba(139,92,246,.12),inset 0 0 40px rgba(34,211,238,.05);
+  position:relative;
+  padding:28px;
+}
+.machine::-webkit-scrollbar{display:none}
+.machine::before{
+  content:"SHIELD ARENA";
+  position:absolute;left:24px;top:-14px;
+  background:#050816;
+  padding:3px 12px;
+  color:var(--cyan);
+  font-size:.75rem;
+  letter-spacing:.18rem;
+  font-weight:900;
+  border:1px solid rgba(34,211,238,.35);
+  border-radius:20px;
+}
+.hud{
+  display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between;
+  margin-bottom:20px;
+}
+.hud-left,.hud-right{display:flex;gap:10px;flex-wrap:wrap}
+.chip{
+  border:1px solid rgba(34,211,238,.35);
+  background:rgba(34,211,238,.08);
+  color:#dffaff;
+  padding:9px 13px;
+  border-radius:10px;
+  font-weight:900;
+  letter-spacing:.04rem;
+  box-shadow:inset 0 0 14px rgba(34,211,238,.05);
+}
+.chip.warn{border-color:rgba(250,204,21,.45);background:rgba(250,204,21,.10);color:#fef3c7}
+.chip.danger{border-color:rgba(251,113,133,.55);background:rgba(251,113,133,.14);color:#ffe4e6;animation:dangerPulse .55s ease-in-out infinite}
+.screen{text-align:center;animation:screenIn .45s ease both}
+.logo{
+  width:150px;height:150px;margin:8px auto 16px;
+  display:flex;align-items:center;justify-content:center;font-size:4rem;
+  border-radius:34px;
+  background:
+    linear-gradient(145deg,rgba(34,211,238,.16),rgba(139,92,246,.12)),
+    radial-gradient(circle at 40% 20%,rgba(255,255,255,.20),transparent 35%);
+  border:2px solid rgba(34,211,238,.35);
+  box-shadow:0 0 28px rgba(34,211,238,.30),inset 0 0 26px rgba(255,255,255,.04);
+  animation:logoFloat 3s ease-in-out infinite;
+}
+h1{
+  font-size:clamp(2.5rem,7vw,5.5rem);
+  line-height:.92;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+  color:transparent;
+  -webkit-text-stroke:1px rgba(248,250,252,.8);
+  text-shadow:0 0 22px rgba(34,211,238,.55);
+  margin-bottom:12px;
+}
+.title-fill{
+  background:linear-gradient(90deg,var(--cyan),#fff,var(--purple),var(--cyan));
+  background-size:250% 100%;
+  -webkit-background-clip:text;background-clip:text;
+  color:transparent;
+  animation:titleFlow 4s linear infinite;
+}
+h2{font-size:clamp(1.6rem,4vw,2.8rem);margin-bottom:14px;text-shadow:0 0 16px rgba(34,211,238,.3)}
+h3{color:#a5f3fc;margin-bottom:8px}
+p{color:var(--muted);line-height:1.6;max-width:850px;margin:0 auto}
+.arcade-input{
+  margin:26px auto 14px;
+  display:flex;justify-content:center;gap:12px;flex-wrap:wrap
+}
+input{
+  width:min(420px,100%);
+  border:2px solid rgba(34,211,238,.32);
+  background:#071126;
+  color:white;
+  padding:15px 18px;
+  border-radius:12px;
+  outline:none;
+  font-weight:800;
+  box-shadow:inset 0 0 18px rgba(34,211,238,.08);
+}
+input:focus{border-color:var(--cyan);box-shadow:0 0 18px rgba(34,211,238,.24),inset 0 0 18px rgba(34,211,238,.08)}
+button{
+  border:2px solid rgba(34,211,238,.35);
+  background:linear-gradient(145deg,rgba(34,211,238,.20),rgba(139,92,246,.14));
+  color:white;
+  padding:13px 18px;
+  border-radius:12px;
+  font-weight:950;
+  cursor:pointer;
+  letter-spacing:.03rem;
+  text-transform:uppercase;
+  transition:.2s;
+  box-shadow:0 0 18px rgba(34,211,238,.12);
+}
+button:hover{transform:translateY(-3px) scale(1.02);border-color:var(--cyan);box-shadow:0 0 24px rgba(34,211,238,.25)}
+button.secondary{background:rgba(255,255,255,.06)}
+button.danger{border-color:rgba(251,113,133,.45);background:rgba(251,113,133,.12)}
+button:disabled{opacity:.5;cursor:not-allowed;transform:none}
+.mode-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:16px;margin-top:24px}
+.mode-card{
+  padding:22px;border-radius:18px;
+  border:2px solid rgba(34,211,238,.30);
+  background:linear-gradient(145deg,rgba(17,31,70,.75),rgba(8,15,40,.85));
+  min-height:220px;text-align:left;cursor:pointer;position:relative;overflow:hidden;
+  transition:.25s;
+}
+.mode-card::after{
+  content:"PLAY";
+  position:absolute;right:14px;top:14px;
+  color:rgba(34,211,238,.38);
+  font-weight:950;
+  letter-spacing:.12rem;
+}
+.mode-card:hover{transform:translateY(-10px) rotateX(2deg);box-shadow:0 0 28px rgba(34,211,238,.22)}
+.mode-card .icon{font-size:3rem;margin-bottom:12px;filter:drop-shadow(0 0 12px rgba(34,211,238,.5))}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin:22px 0}
+.stat{
+  border:2px solid rgba(34,211,238,.28);
+  background:rgba(7,17,38,.78);
+  border-radius:16px;
+  padding:16px;
+}
+.stat b{display:block;font-size:2rem;color:var(--cyan);text-shadow:0 0 12px rgba(34,211,238,.42)}
+.hidden{display:none!important}
+.progressbox{height:14px;border:1px solid rgba(34,211,238,.35);background:rgba(255,255,255,.06);border-radius:20px;overflow:hidden;margin:16px 0 24px}
+.progress{height:100%;width:0;background:linear-gradient(90deg,var(--cyan),var(--purple),var(--cyan));background-size:220% 100%;animation:titleFlow 2s linear infinite;transition:.25s}
+.question{
+  text-align:left;
+  border:2px solid rgba(34,211,238,.28);
+  background:rgba(7,17,38,.80);
+  border-radius:18px;
+  padding:22px;
+  margin-bottom:16px;
+}
+.options{display:grid;gap:12px}
+.option{
+  text-align:left;width:100%;
+  border-radius:14px;
+  background:rgba(255,255,255,.06);
+  border:2px solid rgba(34,211,238,.22);
+  padding:15px 16px;
+  color:white;
+  font-size:1rem;
+  font-weight:850;
+}
+.option:hover{transform:translateX(8px);background:rgba(34,211,238,.12)}
+.option.correct{border-color:rgba(52,211,153,.65);background:rgba(52,211,153,.18)}
+.option.wrong{border-color:rgba(251,113,133,.65);background:rgba(251,113,133,.18)}
+.feedback{
+  display:none;text-align:left;margin-top:16px;
+  padding:16px;border-radius:14px;
+  border:2px solid rgba(34,211,238,.24);
+  background:rgba(255,255,255,.06);
+}
+.feedback.show{display:block;animation:pop .28s ease both}
+.tile-wrap,.slot-wrap{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:18px 0}
+.tile,.slot,.match-card{
+  min-height:62px;padding:14px;border-radius:14px;
+  border:2px solid rgba(34,211,238,.28);
+  background:rgba(255,255,255,.07);
+  display:flex;align-items:center;justify-content:center;
+  text-align:center;font-weight:950;
+}
+.tile{cursor:grab;background:rgba(34,211,238,.13)}
+.tile.selected{outline:3px solid var(--yellow);background:rgba(250,204,21,.14)}
+.slot.filled{border-color:rgba(52,211,153,.55);background:rgba(52,211,153,.12)}
+.match-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;text-align:left;margin-top:18px}
+.match-card{justify-content:flex-start;cursor:pointer}
+.match-card.selected{outline:3px solid var(--yellow)}
+.match-card.done{opacity:.50;background:rgba(52,211,153,.12)}
+.memory-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:18px}
+.mem-card{
+  aspect-ratio:1.25/1;border-radius:16px;
+  border:2px solid rgba(34,211,238,.34);
+  background:linear-gradient(145deg,rgba(34,211,238,.16),rgba(139,92,246,.12));
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;font-weight:950;text-align:center;padding:8px;
+  transition:.25s;position:relative;overflow:hidden;
+}
+.mem-card:not(.open)::before{content:"?";font-size:2.5rem;color:var(--cyan);text-shadow:0 0 14px rgba(34,211,238,.6)}
+.mem-card:not(.open){color:transparent}
+.mem-card.open,.mem-card.done{background:rgba(52,211,153,.12);color:white}
+.mem-card.done{opacity:.55}
+.word-grid{display:grid;grid-template-columns:repeat(10,34px);gap:5px;justify-content:center;margin:18px auto}
+.letter{width:34px;height:34px;border:1px solid rgba(34,211,238,.25);border-radius:8px;background:rgba(255,255,255,.07);display:flex;align-items:center;justify-content:center;font-weight:950;cursor:pointer}
+.letter.sel{background:rgba(250,204,21,.18);border-color:rgba(250,204,21,.55)}
+.letter.found{background:rgba(52,211,153,.16);border-color:rgba(52,211,153,.55)}
+.word-list{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+.word{padding:8px 12px;border:1px solid rgba(34,211,238,.25);border-radius:999px;background:rgba(255,255,255,.06);font-weight:850}
+.word.done{text-decoration:line-through;color:var(--green)}
+.leaderboard{display:grid;gap:10px;margin-top:22px}
+.leader{
+  display:grid;grid-template-columns:70px 1fr 110px 90px;gap:10px;align-items:center;text-align:left;
+  border:2px solid rgba(34,211,238,.25);
+  background:rgba(7,17,38,.78);
+  border-radius:16px;padding:13px 15px;
+}
+.leader.top1{border-color:rgba(250,204,21,.55);background:rgba(250,204,21,.10)}
+.pos{font-weight:950;color:var(--cyan)}.name{font-weight:950}
+.toast{position:fixed;left:50%;top:18px;transform:translateX(-50%);display:none;z-index:100;padding:12px 18px;border-radius:14px;border:1px solid rgba(34,211,238,.38);background:rgba(5,8,22,.95);box-shadow:0 10px 28px rgba(0,0,0,.35)}
+.toast.show{display:block;animation:pop .2s ease both}
+@keyframes gridRun{from{background-position:0 0}to{background-position:0 48px}}
+@keyframes bgShift{from{filter:hue-rotate(0deg)}to{filter:hue-rotate(18deg)}}
+@keyframes blob{from{transform:translate(0,0)}to{transform:translate(150px,120px)}}
+@keyframes logoFloat{0%,100%{transform:translateY(0) rotate(-1deg)}50%{transform:translateY(-12px) rotate(1deg)}}
+@keyframes titleFlow{from{background-position:0 0}to{background-position:220% 0}}
+@keyframes screenIn{from{opacity:0;transform:scale(.96) translateY(16px)}to{opacity:1;transform:scale(1) translateY(0)}}
+@keyframes pop{from{opacity:0;transform:translateY(8px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}
+@keyframes dangerPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.05)}}
+@media(max-width:760px){
+  body{overflow:auto}.app{padding:10px}.machine{padding:18px;border-radius:20px;max-height:none}
+  .match-grid{grid-template-columns:1fr}.memory-grid{grid-template-columns:repeat(2,1fr)}
+  .leader{grid-template-columns:48px 1fr}.leader .score,.leader .time{grid-column:2}
+  .word-grid{grid-template-columns:repeat(10,28px);gap:4px}.letter{width:28px;height:28px;font-size:.82rem}
+}
+</style>
+</head>
+<body>
+<div class="light"></div><div class="light two"></div><div class="scan"></div><div class="toast" id="toast"></div>
+<div class="app"><main class="machine">
+  <div class="hud">
+    <div class="hud-left"><span class="chip">🛡️ SHIELD ARENA</span><span class="chip" id="playerHud">PLAYER: -</span></div>
+    <div class="hud-right"><span class="chip warn" id="xpHud">XP: 0</span><span class="chip" id="modeHud">LOBBY</span></div>
+  </div>
+
+  <section id="home" class="screen">
+    <div class="logo">🛡️</div>
+    <h1><span class="title-fill">Shield Arena</span></h1>
+    <p>Mini game edukasi Interactive Shield. Pilih mode, kalahkan waktu, kumpulkan XP, dan masuk Hall of Fame.</p>
+    <div class="arcade-input">
+      <input id="playerName" placeholder="Masukkan nama player..." maxlength="24">
+      <button onclick="savePlayer()">Start Player</button>
+    </div>
+    <div class="mode-grid">
+      <div class="mode-card" onclick="startQuiz()"><div class="icon">🎯</div><h3>Quiz Arena</h3><p>Soal acak tanpa batas. 20 soal, 10 detik per soal. Habis waktu otomatis lanjut.</p></div>
+      <div class="mode-card" onclick="startPuzzle()"><div class="icon">🧩</div><h3>Puzzle Arena</h3><p>Puzzle acak: susun urutan, cocokkan kasus, cari kata, dan memory match.</p></div>
+      <div class="mode-card" onclick="startRapid()"><div class="icon">⚡</div><h3>Rapid Response</h3><p>Situasi cepat. 5 detik untuk memilih tindakan paling aman.</p></div>
+      <div class="mode-card" onclick="showLeaderboard('total')"><div class="icon">🏆</div><h3>Hall of Fame</h3><p>Lihat ranking total dan ranking per mode. Karena manusia suka kompetisi, bahkan untuk edukasi.</p></div>
+    </div>
+    <div class="arcade-input">
+      <button class="secondary" onclick="showLeaderboard('quiz')">Rank Quiz</button>
+      <button class="secondary" onclick="showLeaderboard('puzzle')">Rank Puzzle</button>
+      <button class="secondary" onclick="showLeaderboard('rapid')">Rank Rapid</button>
+      <button class="danger" onclick="resetLeaderboard()">Reset</button>
+    </div>
+  </section>
+
+  <section id="game" class="screen hidden">
+    <div class="hud">
+      <div class="hud-left"><span class="chip" id="counter">1/20</span><span class="chip danger" id="timer">10s</span></div>
+      <div class="hud-right"><span class="chip warn" id="scoreHud">XP: 0</span></div>
+    </div>
+    <div class="progressbox"><div class="progress" id="progress"></div></div>
+    <div id="gameContent"></div>
+    <div class="feedback" id="feedback"></div>
+    <div class="arcade-input">
+      <button id="nextBtn" class="hidden" onclick="nextStep()">Next Level</button>
+      <button class="secondary" onclick="goHome()">Exit</button>
+    </div>
+  </section>
+
+  <section id="result" class="screen hidden">
+    <h2 id="resultName">PLAYER</h2>
+    <div class="stats">
+      <div class="stat"><b id="finalScore">0</b><span>XP</span></div>
+      <div class="stat"><b id="finalCorrect">0</b><span>Sukses</span></div>
+      <div class="stat"><b id="finalTime">0s</b><span>Waktu</span></div>
+      <div class="stat"><b id="rankTitle">Rank</b><span>Badge</span></div>
+    </div>
+    <div class="arcade-input">
+      <button onclick="showLeaderboard(currentMode)">Mode Rank</button>
+      <button onclick="showLeaderboard('total')">Hall of Fame</button>
+      <button class="secondary" onclick="goHome()">Lobby</button>
+    </div>
+  </section>
+
+  <section id="leaderboardSection" class="screen hidden">
+    <h2 id="leaderTitle">Hall of Fame</h2>
+    <div id="leaderboard" class="leaderboard"></div>
+    <div class="arcade-input"><button onclick="goHome()">Back to Lobby</button><button class="danger" onclick="resetLeaderboard()">Reset Board</button></div>
+  </section>
+</main></div>
+
+<script>
+const $=id=>document.getElementById(id);
+const screens=["home","game","result","leaderboardSection"];
+let player="",currentMode="",pool=[],current=0,score=0,correct=0,startTime=0,timeLeft=0,timer=null,answered=false,selectedTile=null,selectedLeft=null,selectedLetters=[],openCards=[];
+const QUIZ=[
+["Apa arti bystander?",["Saksi yang bisa membantu","Pelaku utama","Poster kampanye","Panitia"],0,"Bystander adalah saksi yang bisa membantu secara aman."],
+["'Beri Dukungan' berarti...",["Mendengarkan tanpa menghakimi","Menyebarkan cerita","Memaksa korban","Menyalahkan korban"],0,"Korban membutuhkan dukungan dan ruang aman."],
+["Jika situasi tidak aman, saksi sebaiknya...",["Mencari bantuan","Menyerang sendiri","Merekam untuk viral","Diam"],0,"Mencari bantuan adalah langkah aman."],
+["Satgas PPKS berperan dalam...",["Pencegahan dan penanganan kekerasan seksual","Parkir","Kantin","Absensi"],0,"Satgas PPKS menangani isu kekerasan seksual di kampus."],
+["Dokumentasi yang tepat adalah...",["Menyimpan bukti aman","Mengunggah bukti","Mengedit bukti","Menghapus bukti"],0,"Bukti harus disimpan aman dan tidak disebarkan sembarangan."],
+["Tujuan 5B adalah...",["Panduan praktis bagi saksi","Slogan panjang","Hukuman langsung","Dekorasi poster"],0,"5B membantu saksi bertindak secara aman."],
+["Sikap yang salah saat korban bercerita adalah...",["Menyalahkan korban","Mendengarkan","Menjaga privasi","Memberi dukungan"],0,"Victim blaming harus dihindari."],
+["Pelecehan dapat terjadi melalui...",["Verbal, fisik, digital","Hanya fisik","Hanya chat","Tidak pernah di kampus"],0,"Bentuk pelecehan dapat beragam."],
+["Fungsi QR Code kampanye adalah...",["Akses cepat informasi","Hiasan saja","Mengganti semua materi","Membuat bingung"],0,"QR Code mempermudah akses."],
+["Kampus aman berarti...",["Lingkungan peduli dan melindungi","Tidak ada poster","Semua masalah disembunyikan","Hanya slogan"],0,"Kampus aman dibangun dari kepedulian."]
+];
+const RAPID=[
+["Teman menerima chat tidak pantas.",["Dukung dan arahkan bantuan","Sebarkan","Tertawakan","Abaikan"],0],
+["Situasi di lorong terlihat berisiko.",["Cari bantuan","Masuk sendiri","Rekam untuk konten","Pergi"],0],
+["Korban minta privasi.",["Jaga rahasia","Unggah","Cerita ke grup","Paksa lapor"],0],
+["Ada bukti chat.",["Simpan aman","Edit dramatis","Sebarkan","Hapus"],0],
+["Kamu takut menegur langsung.",["Minta bantuan","Diam total","Serang","Ejek"],0],
+["Korban menangis.",["Dampingi tenang","Interogasi","Salahkan","Tinggalkan"],0]
+];
+const PUZZLES=[
+{type:"order",title:"Susun 5B",items:["Bantu","Beritahu","Beri Dukungan","Buat Dokumentasi","Bicara"]},
+{type:"order",title:"Susun Alur Proyek",items:["Perencanaan","Pengumpulan Data","Produksi Media","Publikasi","Festival"]},
+{type:"match",title:"Match Kasus dan Tindakan",pairs:[["Korban takut cerita","Beri Dukungan"],["Ada bukti chat","Buat Dokumentasi"],["Situasi berisiko","Bantu"],["Butuh pihak resmi","Beritahu"],["Tegur aman","Bicara"]]},
+{type:"word",title:"Word Search",words:["SATGAS","KAMPUS","BANTU","BICARA","SAKSI"]},
+{type:"memory",title:"Memory Match",pairs:[["Korban","Dukungan"],["Satgas","Pendampingan"],["Bystander","Saksi"],["Dokumentasi","Bukti"],["Kampus","Aman"],["5B","Tindakan"]]}
+];
+function show(id){screens.forEach(s=>$(s).classList.add("hidden"));$(id).classList.remove("hidden")}
+function toast(t){$("toast").textContent=t;$("toast").classList.add("show");setTimeout(()=>$("toast").classList.remove("show"),1500)}
+function shuffle(a){return[...a].sort(()=>Math.random()-.5)}
+function savePlayer(){player=$("playerName").value.trim();if(!player){toast("Isi nama player dulu.");return}$("playerHud").textContent="PLAYER: "+player;toast("Player aktif. Pilih mode.")}
+function needPlayer(){player=$("playerName").value.trim()||player;if(!player){toast("Isi nama player dulu.");return false}$("playerHud").textContent="PLAYER: "+player;return true}
+function goHome(){clearInterval(timer);$("modeHud").textContent="LOBBY";show("home")}
+function base(mode,label,steps){if(!needPlayer())return;currentMode=mode;pool=steps;current=0;score=0;correct=0;startTime=Date.now();$("modeHud").textContent=label;show("game");render()}
+function startQuiz(){let steps=[];for(let i=0;i<20;i++)steps.push(makeChoice(QUIZ[Math.floor(Math.random()*QUIZ.length)],10));base("quiz","QUIZ ARENA",steps)}
+function startRapid(){let steps=[];for(let i=0;i<15;i++)steps.push(makeChoice(RAPID[Math.floor(Math.random()*RAPID.length)],5));base("rapid","RAPID RESPONSE",steps)}
+function startPuzzle(){let steps=[];for(let i=0;i<8;i++)steps.push(JSON.parse(JSON.stringify(PUZZLES[Math.floor(Math.random()*PUZZLES.length)])));base("puzzle","PUZZLE ARENA",steps)}
+function makeChoice(r,sec){let ops=shuffle(r[1].map((x,i)=>({x,i})));return{type:"choice",q:r[0],options:ops.map(o=>o.x),answer:ops.findIndex(o=>o.i===r[2]),explain:r[3]||"Pilih tindakan yang aman dan mendukung korban.",sec}}
+function startTimer(sec,cb){clearInterval(timer);timeLeft=sec;tick();timer=setInterval(()=>{timeLeft--;tick();if(timeLeft<=0){clearInterval(timer);cb()}},1000)}
+function tick(){$("timer").textContent=timeLeft+"s";$("timer").classList.toggle("danger",timeLeft<=3)}
+function progress(){$("counter").textContent=(current+1)+"/"+pool.length;$("progress").style.width=(current/pool.length*100)+"%";$("scoreHud").textContent="XP: "+score;$("xpHud").textContent="XP: "+score}
+function render(){answered=false;selectedTile=null;selectedLeft=null;selectedLetters=[];openCards=[];$("feedback").classList.remove("show");$("feedback").innerHTML="";$("nextBtn").classList.add("hidden");progress();let s=pool[current];if(s.type==="choice")choice(s);if(s.type==="order")order(s);if(s.type==="match")match(s);if(s.type==="word")word(s);if(s.type==="memory")memory(s)}
+function choice(s){$("gameContent").innerHTML=`<div class="question"><h2>${esc(s.q)}</h2></div><div class="options" id="opts"></div>`;s.options.forEach((o,i)=>{let b=document.createElement("button");b.className="option";b.textContent=String.fromCharCode(65+i)+". "+o;b.onclick=()=>ans(i);$("opts").appendChild(b)});startTimer(s.sec,()=>{if(!answered){answered=true;resultChoice(-1);setTimeout(nextStep,650)}})}
+function ans(i){if(answered)return;answered=true;clearInterval(timer);resultChoice(i)}
+function resultChoice(i){let s=pool[current],bs=[...document.querySelectorAll(".option")];bs.forEach((b,k)=>{b.disabled=true;if(k===s.answer)b.classList.add("correct")});if(i===s.answer){correct++;let pts=100+timeLeft*12;score+=pts;bs[i].classList.add("correct");feed(`<b>Correct.</b><br>${esc(s.explain)}<br><br>+${pts} XP`)}else{if(i>=0)bs[i].classList.add("wrong");feed(`<b>${i<0?"Time out.":"Wrong."}</b><br>${esc(s.explain)}`)}$("nextBtn").classList.remove("hidden");progress()}
+function order(s){$("gameContent").innerHTML=`<div class="question"><h2>${s.title}</h2><p>Tap kartu lalu tap slot.</p></div><div class="slot-wrap" id="slots"></div><h3>Inventory</h3><div class="tile-wrap" id="tiles"></div>`;s.items.forEach((_,i)=>{let slot=document.createElement("div");slot.className="slot";slot.textContent="Slot "+(i+1);slot.onclick=()=>place(slot);$("slots").appendChild(slot)});shuffle(s.items).forEach(x=>{let t=document.createElement("div");t.className="tile";t.textContent=x;t.onclick=()=>sel(t);$("tiles").appendChild(t)});startTimer(25,()=>checkOrder(true))}
+function sel(t){document.querySelectorAll(".tile").forEach(x=>x.classList.remove("selected"));selectedTile=t;t.classList.add("selected")}
+function place(s){if(!selectedTile||s.dataset.v)return;s.dataset.v=selectedTile.textContent;s.textContent=selectedTile.textContent;s.classList.add("filled");selectedTile.remove();selectedTile=null;if(document.querySelectorAll(".slot.filled").length===pool[current].items.length)checkOrder(false)}
+function checkOrder(timeout){clearInterval(timer);let s=pool[current],vals=[...document.querySelectorAll(".slot")].map(x=>x.dataset.v||"");if(vals.join("|")===s.items.join("|")){correct++;let pts=280+timeLeft*10;score+=pts;feed(`<b>Puzzle Clear.</b><br>+${pts} XP`)}else feed(`<b>${timeout?"Time out.":"Wrong order."}</b><br>Jawaban: ${s.items.join(" → ")}`);$("nextBtn").classList.remove("hidden");progress()}
+function match(s){$("gameContent").innerHTML=`<div class="question"><h2>${s.title}</h2><p>Cocokkan kartu kiri dan kanan.</p></div><div class="match-grid"><div id="left"></div><div id="right"></div></div>`;shuffle(s.pairs.map(p=>p[0])).forEach(x=>mcard("left",x,"l"));shuffle(s.pairs.map(p=>p[1])).forEach(x=>mcard("right",x,"r"));window.ms={pairs:s.pairs,done:0};startTimer(25,()=>endMatch(true))}
+function mcard(id,text,side){let c=document.createElement("div");c.className="match-card";c.textContent=text;c.dataset.side=side;c.onclick=()=>clickM(c);$(id).appendChild(c)}
+function clickM(c){if(c.classList.contains("done"))return;if(c.dataset.side==="l"){document.querySelectorAll('[data-side="l"]').forEach(x=>x.classList.remove("selected"));selectedLeft=c;c.classList.add("selected");return}if(!selectedLeft)return;let p=window.ms.pairs.find(x=>x[0]===selectedLeft.textContent);if(p&&p[1]===c.textContent){selectedLeft.classList.add("done");c.classList.add("done");selectedLeft.classList.remove("selected");selectedLeft=null;window.ms.done++;if(window.ms.done===window.ms.pairs.length)endMatch(false)}else toast("Tidak cocok.")}
+function endMatch(timeout){clearInterval(timer);if(window.ms.done===window.ms.pairs.length){correct++;let pts=320+timeLeft*10;score+=pts;feed(`<b>Match Clear.</b><br>+${pts} XP`)}else feed(`<b>${timeout?"Time out.":"Belum selesai."}</b>`);$("nextBtn").classList.remove("hidden");progress()}
+function memory(s){let cards=[];s.pairs.forEach((p,i)=>{cards.push({t:p[0],id:i});cards.push({t:p[1],id:i})});cards=shuffle(cards);$("gameContent").innerHTML=`<div class="question"><h2>${s.title}</h2><p>Buka dua kartu dan cari pasangan makna yang cocok.</p></div><div class="memory-grid" id="mem"></div>`;cards.forEach(c=>{let d=document.createElement("div");d.className="mem-card";d.textContent=c.t;d.dataset.id=c.id;d.onclick=()=>openMem(d);$("mem").appendChild(d)});window.memDone=0;startTimer(35,()=>endMemory(true))}
+function openMem(c){if(c.classList.contains("done")||c.classList.contains("open")||openCards.length>=2)return;c.classList.add("open");openCards.push(c);if(openCards.length===2){if(openCards[0].dataset.id===openCards[1].dataset.id){openCards.forEach(x=>x.classList.add("done"));window.memDone++;openCards=[];if(window.memDone===pool[current].pairs.length)endMemory(false)}else setTimeout(()=>{openCards.forEach(x=>x.classList.remove("open"));openCards=[]},600)}}
+function endMemory(timeout){clearInterval(timer);if(window.memDone===pool[current].pairs.length){correct++;let pts=360+timeLeft*10;score+=pts;feed(`<b>Memory Clear.</b><br>+${pts} XP`)}else feed(`<b>${timeout?"Time out.":"Belum selesai."}</b><br>Pasangan ditemukan: ${window.memDone}`);$("nextBtn").classList.remove("hidden");progress()}
+function word(s){let size=10,g=Array.from({length:size},()=>Array(size).fill(""));s.words.forEach(w=>placeWord(g,w));fill(g);$("gameContent").innerHTML=`<div class="question"><h2>${s.title}</h2><p>Klik huruf berurutan untuk menemukan kata.</p></div><div class="word-list" id="wl"></div><div class="word-grid" id="wg"></div>`;s.words.forEach(w=>{let span=document.createElement("span");span.className="word";span.id="w"+w;span.textContent=w;$("wl").appendChild(span)});g.flat().forEach(ch=>{let l=document.createElement("div");l.className="letter";l.textContent=ch;l.onclick=()=>letter(l,s.words);$("wg").appendChild(l)});window.found=[];startTimer(30,()=>endWord(true))}
+function placeWord(g,w){let n=g.length;for(let z=0;z<100;z++){let h=Math.random()>.5,r=Math.floor(Math.random()*(h?n:n-w.length)),c=Math.floor(Math.random()*(h?n-w.length:n)),ok=true;for(let i=0;i<w.length;i++){let rr=r+(h?0:i),cc=c+(h?i:0);if(g[rr][cc]&&g[rr][cc]!==w[i])ok=false}if(ok){for(let i=0;i<w.length;i++){let rr=r+(h?0:i),cc=c+(h?i:0);g[rr][cc]=w[i]}return}}}
+function fill(g){let A="ABCDEFGHIJKLMNOPQRSTUVWXYZ";for(let r=0;r<g.length;r++)for(let c=0;c<g.length;c++)if(!g[r][c])g[r][c]=A[Math.floor(Math.random()*A.length)]}
+function letter(l,words){if(l.classList.contains("found"))return;l.classList.toggle("sel");if(l.classList.contains("sel"))selectedLetters.push(l);else selectedLetters=selectedLetters.filter(x=>x!==l);let txt=selectedLetters.map(x=>x.textContent).join("");if(words.includes(txt)&&!window.found.includes(txt)){window.found.push(txt);selectedLetters.forEach(x=>{x.classList.remove("sel");x.classList.add("found")});$("w"+txt).classList.add("done");selectedLetters=[];if(window.found.length===words.length)endWord(false)}}
+function endWord(timeout){clearInterval(timer);let f=window.found.length,total=pool[current].words.length;if(f===total){correct++;let pts=350+timeLeft*10;score+=pts;feed(`<b>Word Clear.</b><br>+${pts} XP`)}else{let pts=f*70;score+=pts;feed(`<b>${timeout?"Time out.":"Belum lengkap."}</b><br>Kata ditemukan: ${f}/${total}. +${pts} XP`)}$("nextBtn").classList.remove("hidden");progress()}
+function feed(m){$("feedback").innerHTML=m;$("feedback").classList.add("show")}
+function nextStep(){current++;if(current>=pool.length)finish();else render()}
+function finish(){clearInterval(timer);let time=Math.floor((Date.now()-startTime)/1000);score+=correct*90+Math.max(0,180-time);save({name:player,mode:currentMode,score,correct,time,date:new Date().toLocaleString("id-ID")});$("resultName").textContent=player;$("finalScore").textContent=score;$("finalCorrect").textContent=correct;$("finalTime").textContent=time+"s";$("rankTitle").textContent=rank(score);show("result")}
+function rank(s){if(s>3400)return"Guardian";if(s>2400)return"Shield Master";if(s>1500)return"Active";return"Rookie"}
+function scores(){try{return JSON.parse(localStorage.getItem("shieldArenaBoard"))||[]}catch(e){return[]}}
+function save(x){let d=scores();d.push(x);localStorage.setItem("shieldArenaBoard",JSON.stringify(d.slice(-250)))}
+function showLeaderboard(mode){let d=scores(),map={};$("leaderTitle").textContent=mode==="total"?"Hall of Fame":"Rank "+mode.toUpperCase();if(mode==="total"){d.forEach(x=>{map[x.name]=map[x.name]||{name:x.name,score:0,correct:0,time:0,date:x.date};map[x.name].score+=x.score;map[x.name].correct+=x.correct;map[x.name].time+=x.time;map[x.name].date=x.date});d=Object.values(map)}else d=d.filter(x=>x.mode===mode);d.sort((a,b)=>b.score-a.score||b.correct-a.correct||a.time-b.time);let box=$("leaderboard");box.innerHTML=d.length?"":"<p>Belum ada skor.</p>";d.slice(0,20).forEach((x,i)=>{let div=document.createElement("div");div.className="leader"+(i===0?" top1":"");let medal=i===0?"🥇":i===1?"🥈":i===2?"🥉":"#"+(i+1);div.innerHTML=`<div class="pos">${medal}</div><div><div class="name">${esc(x.name)}</div><small>${x.correct} sukses • ${x.date||""}</small></div><div class="score"><b>${x.score}</b><br><small>XP</small></div><div class="time"><b>${x.time}s</b><br><small>Time</small></div>`;box.appendChild(div)});show("leaderboardSection")}
+function resetLeaderboard(){if(prompt("Ketik RESET untuk reset Hall of Fame:")==="RESET"){localStorage.removeItem("shieldArenaBoard");showLeaderboard("total")}}
+function esc(s){return String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]))}
+</script>
+</body>
+</html>
